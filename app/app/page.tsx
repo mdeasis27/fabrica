@@ -1,23 +1,61 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Alert } from "@/design-system/components/alert";
 import { Card } from "@/design-system/components/card";
 import { MetricCard } from "@/design-system/components/metric-card";
 import { StatusBadge } from "@/design-system/components/status-badge";
-import { getDuplicates, getOptions, getResult } from "@/lib/fabrica/demo";
+import { getOptions, getResult } from "@/lib/fabrica/demo";
+import { generateEvalSet } from "@/lib/fabrica/generate";
+import type { GeneratorResult, LogEntry } from "@/lib/fabrica/types";
 
 const RESULT = getResult();
 const OPTIONS = getOptions();
-const DUPS = getDuplicates();
 
-const INTENTS = [...new Set(RESULT.evalSet.map((l) => l.intent))];
+const PREFILL = `cuál es mi saldo | saldo
+cuál es mi saldo hoy | saldo
+dame mi saldo | saldo
+quiero pagar mi tarjeta | pago
+quiero pagar mi tarjeta hoy | pago
+realizar un pago | pago
+reporto cargo no reconocido | disputa
+reporto cargo no reconocido hoy | disputa`;
 
 function pct(v: number) {
   return `${(v * 100).toFixed(0)}%`;
 }
 
+function parseLogs(text: string): LogEntry[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, i) => {
+      const idx = line.lastIndexOf("|");
+      if (idx === -1) return null;
+      return {
+        id: `l${i + 1}`,
+        query: line.slice(0, idx).trim(),
+        intent: line.slice(idx + 1).trim(),
+      };
+    })
+    .filter((l): l is LogEntry => l !== null);
+}
+
 export default function AppPage() {
+  const [logsText, setLogsText] = useState(PREFILL);
+  const [threshold, setThreshold] = useState(0.8);
+  const [sampleSize, setSampleSize] = useState(3);
+  const [result, setResult] = useState<GeneratorResult | null>(null);
+
+  function run() {
+    const logs = parseLogs(logsText);
+    setResult(generateEvalSet(logs, { simThreshold: threshold, sampleSize }));
+  }
+
+  const intents = result ? [...new Set(result.evalSet.map((l) => l.intent))] : [];
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-background/80 backdrop-blur-md">
@@ -82,55 +120,115 @@ export default function AppPage() {
           />
         </div>
 
-        {/* ── DUPLICATES ──────────────────────── */}
+        {/* ── PLAYGROUND ──────────────────────── */}
         <section>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Dedupe por similitud</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Generar eval set en vivo</h2>
           <p className="text-sm text-muted-foreground mb-5">
-            Jaccard sobre tokens con umbral {OPTIONS.simThreshold}. Seis logs son near-duplicados
-            de uno ya conservado y se descartan.
+            Pega logs de producción, uno por línea, con formato <code className="font-mono text-xs">query | intent</code>.
+            La fábrica deduplica por Jaccard y muestrea por intención.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {DUPS.map((d) => (
-              <Card key={d.id} className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-xs text-muted-foreground">{d.id} → dup de {d.dupOf}</span>
-                  <StatusBadge tone="warning">descartado</StatusBadge>
-                </div>
-                <p className="font-mono text-sm text-foreground">&quot;{d.query}&quot;</p>
-              </Card>
-            ))}
-          </div>
-        </section>
 
-        {/* ── EVAL SET ────────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Eval set generado</h2>
-          <p className="text-sm text-muted-foreground mb-5">
-            {RESULT.evalSetSize} casos muestreados desde {RESULT.dedupedCount} únicos, agrupados por
-            intención (clustering determinista por etiqueta).
-          </p>
-          <div className="space-y-4">
-            {INTENTS.map((intent) => (
-              <Card key={intent} className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <StatusBadge tone="info">{intent}</StatusBadge>
-                  <span className="text-xs text-muted-foreground">
-                    {RESULT.evalSet.filter((l) => l.intent === intent).length} casos
-                  </span>
+          <Card className="p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Logs</p>
+            <textarea
+              value={logsText}
+              onChange={(e) => setLogsText(e.target.value)}
+              rows={8}
+              className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+            />
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm text-foreground">Umbral de similitud</span>
+                  <span className="font-mono text-sm tabular-nums text-foreground">{threshold.toFixed(2)}</span>
                 </div>
-                <ul className="space-y-1">
-                  {RESULT.evalSet
-                    .filter((l) => l.intent === intent)
-                    .map((l) => (
-                      <li key={l.id} className="flex items-center gap-2 text-sm">
-                        <span className="font-mono text-xs text-muted-foreground">{l.id}</span>
-                        <span className="text-foreground">{l.query}</span>
-                      </li>
-                    ))}
-                </ul>
-              </Card>
-            ))}
-          </div>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={1}
+                  step={0.05}
+                  value={threshold}
+                  onChange={(e) => setThreshold(Number(e.target.value))}
+                  className="w-full accent-foreground"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm text-foreground">Muestras por intención</span>
+                  <span className="font-mono text-sm tabular-nums text-foreground">{sampleSize}</span>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={sampleSize}
+                  onChange={(e) => setSampleSize(Math.max(1, Number(e.target.value)))}
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+                />
+              </div>
+            </div>
+            <button
+              onClick={run}
+              className="mt-4 w-full rounded-[var(--radius-md)] bg-accent px-4 py-2.5 text-sm font-medium text-[#ffffff] hover:bg-accent/90 transition-colors"
+            >
+              Generar eval set
+            </button>
+          </Card>
+
+          {result && (
+            <div className="mt-6 space-y-5">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <MetricCard
+                  label="Logs crudos"
+                  value={result.rawCount}
+                  hint="líneas parseadas"
+                  tone="neutral"
+                />
+                <MetricCard
+                  label="Dedupe rate"
+                  value={pct(result.dedupeRate)}
+                  hint={`${result.duplicatesRemoved} duplicados`}
+                  tone="info"
+                />
+                <MetricCard
+                  label="Cobertura de intenciones"
+                  value={pct(result.coverage)}
+                  hint={`${result.intentsCovered}/${result.totalIntents}`}
+                  tone="success"
+                />
+                <MetricCard
+                  label="Tamaño del eval set"
+                  value={result.evalSetSize}
+                  hint={`${result.dedupedCount} únicos`}
+                  tone="success"
+                />
+              </div>
+
+              <div className="space-y-4">
+                {intents.map((intent) => (
+                  <Card key={intent} className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <StatusBadge tone="info">{intent}</StatusBadge>
+                      <span className="text-xs text-muted-foreground">
+                        {result.evalSet.filter((l) => l.intent === intent).length} casos
+                      </span>
+                    </div>
+                    <ul className="space-y-1">
+                      {result.evalSet
+                        .filter((l) => l.intent === intent)
+                        .map((l) => (
+                          <li key={l.id} className="flex items-center gap-2 text-sm">
+                            <span className="font-mono text-xs text-muted-foreground">{l.id}</span>
+                            <span className="text-foreground">{l.query}</span>
+                          </li>
+                        ))}
+                    </ul>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ── NOTE ────────────────────────────── */}
