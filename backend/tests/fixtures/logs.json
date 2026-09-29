@@ -1,0 +1,39 @@
+{
+  "logs": [
+    { "id": "l01", "query": "cuál es mi saldo", "intent": "saldo" },
+    { "id": "l02", "query": "cuál es mi saldo hoy", "intent": "saldo" },
+    { "id": "l03", "query": "saldo de mi cuenta", "intent": "saldo" },
+    { "id": "l04", "query": "dame mi saldo", "intent": "saldo" },
+    { "id": "l05", "query": "cuánto tengo en la cuenta", "intent": "saldo" },
+
+    { "id": "l06", "query": "quiero pagar mi tarjeta", "intent": "pago" },
+    { "id": "l07", "query": "quiero pagar mi tarjeta hoy", "intent": "pago" },
+    { "id": "l08", "query": "realizar un pago", "intent": "pago" },
+    { "id": "l09", "query": "pagar la cuota mensual", "intent": "pago" },
+    { "id": "l10", "query": "cómo pago mi factura", "intent": "pago" },
+
+    { "id": "l11", "query": "reporto cargo no reconocido", "intent": "disputa" },
+    { "id": "l12", "query": "reporto cargo no reconocido hoy", "intent": "disputa" },
+    { "id": "l13", "query": "disputar una compra", "intent": "disputa" },
+    { "id": "l14", "query": "me cobraron de más", "intent": "disputa" },
+    { "id": "l15", "query": "cargo duplicado en mi cuenta", "intent": "disputa" },
+
+    { "id": "l16", "query": "estado de mi solicitud", "intent": "solicitud" },
+    { "id": "l17", "query": "estado de mi solicitud hoy", "intent": "solicitud" },
+    { "id": "l18", "query": "en qué va mi aplicación", "intent": "solicitud" },
+    { "id": "l19", "query": "cuándo me aprueban el crédito", "intent": "solicitud" },
+    { "id": "l20", "query": "seguimiento de mi solicitud", "intent": "solicitud" },
+
+    { "id": "l21", "query": "aumentar mi límite de crédito", "intent": "limite" },
+    { "id": "l22", "query": "aumentar mi límite de crédito ya", "intent": "limite" },
+    { "id": "l23", "query": "cuál es mi límite", "intent": "limite" },
+    { "id": "l24", "query": "puedo subir mi línea", "intent": "limite" },
+    { "id": "l25", "query": "límite disponible", "intent": "limite" },
+
+    { "id": "l26", "query": "creo que me robaron la tarjeta", "intent": "fraude" },
+    { "id": "l27", "query": "creo que me robaron la tarjeta hoy", "intent": "fraude" },
+    { "id": "l28", "query": "bloquear mi tarjeta", "intent": "fraude" },
+    { "id": "l29", "query": "transacción fraudulenta", "intent": "fraude" },
+    { "id": "l30", "query": "alguien usó mi tarjeta", "intent": "fraude" }
+  ]
+}

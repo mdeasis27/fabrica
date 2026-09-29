@@ -1,0 +1,11 @@
+{
+  "rawCount": 30,
+  "dedupedCount": 24,
+  "duplicatesRemoved": 6,
+  "dedupeRate": 0.2,
+  "totalIntents": 6,
+  "intentsCovered": 6,
+  "coverage": 1.0,
+  "evalSetSize": 18,
+  "evalSetIds": ["l01", "l03", "l04", "l06", "l08", "l09", "l11", "l13", "l14", "l16", "l18", "l19", "l21", "l23", "l24", "l26", "l28", "l29"]
+}
