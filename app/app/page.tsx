@@ -1,17 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Alert } from "@/design-system/components/alert";
 import { Card } from "@/design-system/components/card";
 import { MetricCard } from "@/design-system/components/metric-card";
 import { StatusBadge } from "@/design-system/components/status-badge";
-import { getOptions, getResult } from "@/lib/fabrica/demo";
-import { generateEvalSet } from "@/lib/fabrica/generate";
-import type { GeneratorResult, LogEntry } from "@/lib/fabrica/types";
+import type { LogEntry } from "@/lib/fabrica/types";
 
-const RESULT = getResult();
-const OPTIONS = getOptions();
+interface GenerateResult {
+  rawCount?: number;
+  dedupedCount?: number;
+  duplicatesRemoved?: number;
+  dedupeRate?: number;
+  totalIntents?: number;
+  intentsCovered?: number;
+  coverage?: number;
+  evalSetSize?: number;
+  evalSet?: LogEntry[];
+  error?: string;
+}
+
+interface HistoryItem {
+  id: number;
+  logs_count: number;
+  eval_size: number;
+  coverage: string;
+  dedupe_rate: string;
+  created_at: string;
+}
 
 const PREFILL = `cuál es mi saldo | saldo
 cuál es mi saldo hoy | saldo
@@ -26,35 +43,51 @@ function pct(v: number) {
   return `${(v * 100).toFixed(0)}%`;
 }
 
-function parseLogs(text: string): LogEntry[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line, i) => {
-      const idx = line.lastIndexOf("|");
-      if (idx === -1) return null;
-      return {
-        id: `l${i + 1}`,
-        query: line.slice(0, idx).trim(),
-        intent: line.slice(idx + 1).trim(),
-      };
-    })
-    .filter((l): l is LogEntry => l !== null);
-}
-
 export default function AppPage() {
   const [logsText, setLogsText] = useState(PREFILL);
   const [threshold, setThreshold] = useState(0.8);
   const [sampleSize, setSampleSize] = useState(3);
-  const [result, setResult] = useState<GeneratorResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<GenerateResult | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  function run() {
-    const logs = parseLogs(logsText);
-    setResult(generateEvalSet(logs, { simThreshold: threshold, sampleSize }));
+  async function run() {
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logs: logsText, simThreshold: threshold, sampleSize }),
+      });
+      const data = await res.json();
+      setResult(data);
+      if (res.ok) loadHistory();
+    } catch (err) {
+      setResult({ error: err instanceof Error ? err.message : "Error de red" });
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const intents = result ? [...new Set(result.evalSet.map((l) => l.intent))] : [];
+  async function loadHistory() {
+    try {
+      const res = await fetch("/api/history");
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data.evalSets ?? []);
+      }
+    } catch {
+      /* history is best-effort */
+    }
+  }
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const evalSet = result?.evalSet ?? [];
+  const intents = [...new Set(evalSet.map((l) => l.intent))];
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,167 +117,166 @@ export default function AppPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <StatusBadge tone="info" dot className="px-3 py-1">
-              Demo mode
+            <StatusBadge tone="success" dot className="px-3 py-1">
+              Postgres en vivo
             </StatusBadge>
           </div>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-10">
-        {/* ── SUMMARY BAR ─────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <MetricCard
-            label="Logs crudos"
-            value={RESULT.rawCount}
-            hint="entrada de producción"
-            tone="neutral"
-          />
-          <MetricCard
-            label="Dedupe rate"
-            value={pct(RESULT.dedupeRate)}
-            hint={`${RESULT.duplicatesRemoved} duplicados`}
-            tone="info"
-          />
-          <MetricCard
-            label="Cobertura de intenciones"
-            value={pct(RESULT.coverage)}
-            hint={`${RESULT.intentsCovered}/${RESULT.totalIntents}`}
-            tone="success"
-          />
-          <MetricCard
-            label="Tamaño del eval set"
-            value={RESULT.evalSetSize}
-            hint={`${RESULT.totalIntents} intenciones × ${OPTIONS.sampleSize}`}
-            tone="success"
-          />
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+        <div className="max-w-3xl">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Genera un eval set desde logs reales</h2>
+          <p className="text-sm text-muted-foreground mt-2">
+            Pega logs de producción, uno por línea, con formato{" "}
+            <code className="font-mono text-xs">query | intent</code>. La fábrica deduplica por
+            Jaccard, muestrea por intención y <strong>persiste el resultado en Postgres</strong>.
+            Cada generación queda guardada en el historial.
+          </p>
         </div>
 
-        {/* ── PLAYGROUND ──────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Generar eval set en vivo</h2>
-          <p className="text-sm text-muted-foreground mb-5">
-            Pega logs de producción, uno por línea, con formato <code className="font-mono text-xs">query | intent</code>.
-            La fábrica deduplica por Jaccard y muestrea por intención.
-          </p>
-
-          <Card className="p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Logs</p>
-            <textarea
-              value={logsText}
-              onChange={(e) => setLogsText(e.target.value)}
-              rows={8}
-              className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
-            />
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm text-foreground">Umbral de similitud</span>
-                  <span className="font-mono text-sm tabular-nums text-foreground">{threshold.toFixed(2)}</span>
-                </div>
-                <input
-                  type="range"
-                  min={0.5}
-                  max={1}
-                  step={0.05}
-                  value={threshold}
-                  onChange={(e) => setThreshold(Number(e.target.value))}
-                  className="w-full accent-foreground"
-                />
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Logs</p>
+          <textarea
+            value={logsText}
+            onChange={(e) => setLogsText(e.target.value)}
+            rows={8}
+            className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+          />
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-foreground">Umbral de similitud</span>
+                <span className="font-mono text-sm tabular-nums text-foreground">{threshold.toFixed(2)}</span>
               </div>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm text-foreground">Muestras por intención</span>
-                  <span className="font-mono text-sm tabular-nums text-foreground">{sampleSize}</span>
-                </div>
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  step={1}
-                  value={sampleSize}
-                  onChange={(e) => setSampleSize(Math.max(1, Number(e.target.value)))}
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
-                />
-              </div>
+              <input
+                type="range"
+                min={0.5}
+                max={1}
+                step={0.05}
+                value={threshold}
+                onChange={(e) => setThreshold(Number(e.target.value))}
+                className="w-full accent-foreground"
+              />
             </div>
-            <button
-              onClick={run}
-              className="mt-4 w-full rounded-[var(--radius-md)] bg-accent px-4 py-2.5 text-sm font-medium text-[#ffffff] hover:bg-accent/90 transition-colors"
-            >
-              Generar eval set
-            </button>
-          </Card>
-
-          {result && (
-            <div className="mt-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <MetricCard
-                  label="Logs crudos"
-                  value={result.rawCount}
-                  hint="líneas parseadas"
-                  tone="neutral"
-                />
-                <MetricCard
-                  label="Dedupe rate"
-                  value={pct(result.dedupeRate)}
-                  hint={`${result.duplicatesRemoved} duplicados`}
-                  tone="info"
-                />
-                <MetricCard
-                  label="Cobertura de intenciones"
-                  value={pct(result.coverage)}
-                  hint={`${result.intentsCovered}/${result.totalIntents}`}
-                  tone="success"
-                />
-                <MetricCard
-                  label="Tamaño del eval set"
-                  value={result.evalSetSize}
-                  hint={`${result.dedupedCount} únicos`}
-                  tone="success"
-                />
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-foreground">Muestras por intención</span>
+                <span className="font-mono text-sm tabular-nums text-foreground">{sampleSize}</span>
               </div>
-
-              <div className="space-y-4">
-                {intents.map((intent) => (
-                  <Card key={intent} className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <StatusBadge tone="info">{intent}</StatusBadge>
-                      <span className="text-xs text-muted-foreground">
-                        {result.evalSet.filter((l) => l.intent === intent).length} casos
-                      </span>
-                    </div>
-                    <ul className="space-y-1">
-                      {result.evalSet
-                        .filter((l) => l.intent === intent)
-                        .map((l) => (
-                          <li key={l.id} className="flex items-center gap-2 text-sm">
-                            <span className="font-mono text-xs text-muted-foreground">{l.id}</span>
-                            <span className="text-foreground">{l.query}</span>
-                          </li>
-                        ))}
-                    </ul>
-                  </Card>
-                ))}
-              </div>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                step={1}
+                value={sampleSize}
+                onChange={(e) => setSampleSize(Math.max(1, Number(e.target.value)))}
+                className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+              />
             </div>
-          )}
-        </section>
+          </div>
+          <button
+            onClick={run}
+            disabled={loading}
+            className="mt-4 w-full rounded-[var(--radius-md)] bg-accent px-4 py-2.5 text-sm font-medium text-[#ffffff] hover:bg-accent/90 transition-colors disabled:opacity-50"
+          >
+            {loading ? "Generando…" : "Generar eval set"}
+          </button>
+        </Card>
 
-        {/* ── NOTE ────────────────────────────── */}
-        <section>
-          <Alert tone="info" title="Clustering = etiqueta committed, dedupe = matemática real">
-            El clustering por intención usa la etiqueta committed (proxy documentado de un
-            clasificador de intenciones real); el dedupe es Jaccard de tokens real. La promesa es
-            que el eval set crezca sin labeling manual: los logs ya traen la señal, la fábrica la
-            deduplica y la muestrea.
-          </Alert>
-        </section>
+        {result && (
+          <div className="space-y-5">
+            {result.error && (
+              <Alert tone="danger" title="No se pudo generar">{result.error}</Alert>
+            )}
 
-        <footer className="pt-8 border-t border-[var(--border)] flex items-center justify-between text-xs text-muted-foreground">
-          <span>Fabrica · Auto-generador de datasets de eval · Demo mode</span>
-          <a href="https://github.com/mdeasis27/fabrica" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors font-mono">GitHub</a>
-        </footer>
+            {!result.error && (
+              <>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <MetricCard
+                    label="Logs crudos"
+                    value={result.rawCount ?? 0}
+                    hint="líneas parseadas"
+                    tone="neutral"
+                  />
+                  <MetricCard
+                    label="Dedupe rate"
+                    value={pct(result.dedupeRate ?? 0)}
+                    hint={`${result.duplicatesRemoved ?? 0} duplicados`}
+                    tone="info"
+                  />
+                  <MetricCard
+                    label="Cobertura de intenciones"
+                    value={pct(result.coverage ?? 0)}
+                    hint={`${result.intentsCovered ?? 0}/${result.totalIntents ?? 0}`}
+                    tone="success"
+                  />
+                  <MetricCard
+                    label="Tamaño del eval set"
+                    value={result.evalSetSize ?? 0}
+                    hint={`${result.dedupedCount ?? 0} únicos`}
+                    tone="success"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  {intents.map((intent) => (
+                    <Card key={intent} className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <StatusBadge tone="info">{intent}</StatusBadge>
+                        <span className="text-xs text-muted-foreground">
+                          {evalSet.filter((l) => l.intent === intent).length} casos
+                        </span>
+                      </div>
+                      <ul className="space-y-1">
+                        {evalSet
+                          .filter((l) => l.intent === intent)
+                          .map((l) => (
+                            <li key={l.id} className="flex items-center gap-2 text-sm">
+                              <span className="font-mono text-xs text-muted-foreground">{l.id}</span>
+                              <span className="text-foreground">{l.query}</span>
+                            </li>
+                          ))}
+                      </ul>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {history.length > 0 && (
+          <section>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Historial de generaciones (persistido en Postgres)</h3>
+            <div className="overflow-x-auto rounded-[var(--radius-md)] shadow-[var(--shadow-card)] bg-card">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--gray-50)]">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Logs</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eval size</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cobertura</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dedupe</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {history.map((h) => (
+                    <tr key={h.id}>
+                      <td className="px-4 py-2.5 text-foreground tabular-nums">{h.logs_count}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{h.eval_size}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{pct(Number(h.coverage))}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{pct(Number(h.dedupe_rate))}</td>
+                      <td className="px-4 py-2.5 text-right text-xs text-muted-foreground">
+                        {new Date(h.created_at).toLocaleString("es-ES")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
