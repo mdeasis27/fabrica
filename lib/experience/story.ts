@@ -24,8 +24,8 @@ export const STORY: Record<"en" | "es", FabricaStory> = {
     analogy: {
       heading: { before: "The", accent: "analogy" },
       paragraphs: [
-        "A teacher builds an exam from the questions students asked all term. Many are the same question in other words, so she keeps one of each. If she trims too hard, she also throws out a question from another topic that only looked similar, and that topic never reaches the exam.",
-        "Here the questions are thirty real customer messages about six banking topics. The slider decides how alike two messages must be before the second one is dropped as a repeat.",
+        "A teacher builds an exam from the questions students asked all term. Many are the same question in other words, so she keeps one of each. If she trims too hard, she also throws out a question from another topic that only looked similar.",
+        "Here the questions are thirty fictional customer messages about six banking topics. The slider decides how alike two messages must be before the second one is dropped as a repeat.",
       ],
       dictionaryLabel: "In the diagram below",
       dictionary: [
@@ -73,7 +73,7 @@ export const STORY: Record<"en" | "es", FabricaStory> = {
     },
     proves: {
       heading: { before: "What it", accent: "proves" },
-      text: "I watched both ways an exam goes wrong: repeats that inflate the score, and a topic that quietly disappears. The slider shows the point where one problem turns into the other.",
+      text: "I watched both ways an exam goes wrong: repeats that inflate the score, and questions from another topic that quietly drop out. The slider shows the point where one problem turns into the other.",
     },
     engineers: {
       summary: "For engineers",
@@ -88,7 +88,7 @@ export const STORY: Record<"en" | "es", FabricaStory> = {
     scene: {
       title: "What happened to each message",
       caption: "Watch each message stay, fold into its twin, or get thrown out.",
-      statusLabels: { active: "comparing", success: "kept", danger: "lost a topic" },
+      statusLabels: { active: "comparing", success: "kept", danger: "dropped by mistake" },
       tapeLabel: "Thirty customer messages, in order",
       nodes: {
         logs: { name: "Messages", sub: "30 from customers", analogy: "the students' questions" },
@@ -107,8 +107,8 @@ export const STORY: Record<"en" | "es", FabricaStory> = {
     analogy: {
       heading: { accent: "La analogía" },
       paragraphs: [
-        "Una maestra arma un examen con las preguntas que hicieron sus alumnos durante el semestre. Muchas son la misma pregunta con otras palabras, así que se queda con una de cada una. Si recorta de más, también tira una pregunta de otro tema que solo se parecía, y ese tema ya no llega al examen.",
-        "Aquí las preguntas son treinta mensajes reales de clientes sobre seis temas bancarios. El slider decide qué tan parecidos deben ser dos mensajes para que el segundo se descarte como repetido.",
+        "Una maestra arma un examen con las preguntas que hicieron sus alumnos durante el semestre. Muchas son la misma pregunta con otras palabras, así que se queda con una de cada una. Si recorta de más, también tira una pregunta de otro tema que solo se parecía.",
+        "Aquí las preguntas son treinta mensajes ficticios de clientes sobre seis temas bancarios. El slider decide qué tan parecidos deben ser dos mensajes para que el segundo se descarte como repetido.",
       ],
       dictionaryLabel: "En el diagrama de abajo",
       dictionary: [
@@ -156,7 +156,7 @@ export const STORY: Record<"en" | "es", FabricaStory> = {
     },
     proves: {
       heading: { before: "Lo que", accent: "demuestra" },
-      text: "Vigilé las dos formas en que un examen sale mal: repetidas que inflan la calificación y un tema que desaparece sin avisar. El slider muestra el punto donde un problema se convierte en el otro.",
+      text: "Vigilé las dos formas en que un examen sale mal: repetidas que inflan la calificación y preguntas de otro tema que se caen sin avisar. El slider muestra el punto donde un problema se convierte en el otro.",
     },
     engineers: {
       summary: "Para ingenieros",
@@ -171,7 +171,7 @@ export const STORY: Record<"en" | "es", FabricaStory> = {
     scene: {
       title: "Lo que pasó con cada mensaje",
       caption: "Mira cómo cada mensaje se queda, se junta con su gemelo o se tira.",
-      statusLabels: { active: "comparando", success: "se queda", danger: "perdió un tema" },
+      statusLabels: { active: "comparando", success: "se queda", danger: "descartó por error" },
       tapeLabel: "Treinta mensajes de clientes, en orden",
       nodes: {
         logs: { name: "Mensajes", sub: "30 de clientes", analogy: "las preguntas de los alumnos" },
