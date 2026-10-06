@@ -18,7 +18,7 @@ export interface FabricaStory {
 
 export const STORY: Record<"en" | "es", FabricaStory> = {
   en: {
-    name: "Eval set factory",
+    name: "Evaluation set builder",
     oneLiner: "A good exam asks each thing once, even when people phrase it many ways, and leaves no topic out.",
     chips: ["Test sets", "2 min", "Live demo"],
     analogy: {
