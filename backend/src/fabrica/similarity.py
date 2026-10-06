@@ -20,3 +20,17 @@ def dedupe(logs: list[dict], threshold: float) -> list[dict]:
         if all(jaccard(k["query"], log["query"]) < threshold for k in kept):
             kept.append(log)
     return kept
+
+
+def dedupe_statuses(logs: list[dict], threshold: float) -> list[dict]:
+    """What dedupe did with each log: kept (served), twin of the same intent (rerouted) or of another intent (lost)."""
+    kept: list[dict] = []
+    out: list[dict] = []
+    for log in logs:
+        twin = next((k for k in kept if jaccard(k["query"], log["query"]) >= threshold), None)
+        if twin is None:
+            kept.append(log)
+            out.append({"id": log["id"], "status": "served", "dupOf": None})
+        else:
+            out.append({"id": log["id"], "status": "rerouted" if twin["intent"] == log["intent"] else "lost", "dupOf": twin["id"]})
+    return out
