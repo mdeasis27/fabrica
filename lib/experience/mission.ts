@@ -11,7 +11,7 @@ const STEP = 6;
 const SAMPLE = 3;
 /** Two exam questions at least this alike are the same question in other words (the committed setting). */
 const REPEAT = 0.8;
-const LOGS = logsRaw.logs as LogEntry[];
+export const LOGS = logsRaw.logs as LogEntry[];
 
 export function cleanLogs(threshold: number): DedupeStatus[] {
   if (!Number.isFinite(threshold) || threshold <= 0 || threshold > 1) throw new Error("threshold must be in (0, 1].");
