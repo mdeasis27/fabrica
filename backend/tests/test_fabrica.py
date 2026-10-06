@@ -42,3 +42,11 @@ def test_generator_matches_fixture():
     assert result["coverage"] == pytest.approx(fixture["coverage"], abs=1e-12)
     assert result["evalSetSize"] == fixture["evalSetSize"]
     assert [l["id"] for l in result["evalSet"]] == fixture["evalSetIds"]
+
+
+def test_dedupe_statuses_match_fixture():
+    from fabrica.similarity import dedupe_statuses
+
+    logs = _load("logs.json")["logs"]
+    for t, expected in _load("statuses.json")["statuses"].items():
+        assert dedupe_statuses(logs, float(t)) == expected

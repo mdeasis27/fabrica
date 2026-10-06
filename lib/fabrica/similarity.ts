@@ -27,3 +27,22 @@ export function dedupe(logs: readonly LogEntry[], threshold: number): LogEntry[]
   }
   return kept;
 }
+
+export type DedupeStatus = { id: string; status: "served" | "rerouted" | "lost"; dupOf: string | null };
+
+/**
+ * What dedupe did with each log: kept (served), dropped as a twin of the same
+ * intent (rerouted), or dropped as a twin of another intent (lost). The twin
+ * is the first kept log that blocked it, the same one dedupe compares against.
+ */
+export function dedupeStatuses(logs: readonly LogEntry[], threshold: number): DedupeStatus[] {
+  const kept: LogEntry[] = [];
+  return logs.map((log) => {
+    const twin = kept.find((k) => jaccard(k.query, log.query) >= threshold);
+    if (!twin) {
+      kept.push(log);
+      return { id: log.id, status: "served", dupOf: null };
+    }
+    return { id: log.id, status: twin.intent === log.intent ? "rerouted" : "lost", dupOf: twin.id };
+  });
+}
