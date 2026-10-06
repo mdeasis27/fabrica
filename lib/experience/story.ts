@@ -1,7 +1,5 @@
 import type { Heading } from "@/design-system/demo/project-story";
 
-type NodeCopy = { name: string; sub: string; analogy: string };
-
 export interface FabricaStory {
   name: string;
   oneLiner: string;
@@ -13,7 +11,13 @@ export interface FabricaStory {
   fit: { heading: Heading; worthLabel: string; worth: string; notLabel: string; not: string };
   proves: { heading: Heading; text: string };
   engineers: { summary: string; points: string[]; repoLabel: string };
-  scene: { title: string; caption: string; statusLabels: { active: string; danger: string; success: string }; tapeLabel: string; nodes: { logs: NodeCopy; cleaner: NodeCopy; exam: NodeCopy; discarded: NodeCopy }; tape: { served: string; rerouted: string; lost: string }; lostOf: (n: number) => string };
+  scene: {
+    title: string; caption: string; tapeLabel: string; tape: { served: string; rerouted: string; lost: string }; lostOf: (n: number) => string;
+    pile: string; desk: string; board: string; bin: string; examNote: string; topics: Record<string, string>;
+    left: (n: number) => string; tally: (served: number, rerouted: number, lost: number) => string; ariaLabel: (served: number, rerouted: number, lost: number) => string;
+    nowServed: (n: number, query: string, topic: string) => string; nowRerouted: (n: number, query: string, twinN: number) => string; nowLost: (n: number, query: string, twinN: number, twinTopic: string) => string;
+    waiting: string; done: (served: number, rerouted: number, lost: number) => string;
+  };
 }
 
 export const STORY: Record<"en" | "es", FabricaStory> = {
@@ -88,14 +92,21 @@ export const STORY: Record<"en" | "es", FabricaStory> = {
     scene: {
       title: "What happened to each message",
       caption: "Watch each message stay, fold into its twin, or get thrown out.",
-      statusLabels: { active: "comparing", success: "kept", danger: "dropped by mistake" },
       tapeLabel: "Thirty customer messages, in order",
-      nodes: {
-        logs: { name: "Messages", sub: "30 from customers", analogy: "the students' questions" },
-        cleaner: { name: "Cleaner", sub: "compares with kept", analogy: "the teacher" },
-        exam: { name: "Kept", sub: "goes to the exam", analogy: "the exam" },
-        discarded: { name: "Dropped", sub: "counted as a repeat", analogy: "the scrap pile" },
-      },
+      pile: "Students' questions",
+      desk: "The teacher compares",
+      board: "The exam, by topic",
+      bin: "Bin: another topic",
+      examNote: "The exam takes three per topic",
+      topics: { saldo: "Balance", pago: "Payment", disputa: "Dispute", solicitud: "Request", limite: "Limit", fraude: "Fraud" },
+      left: (n) => `${n} left`,
+      tally: (s, r, l) => `${s} kept · ${r} repeats · ${l} thrown out`,
+      ariaLabel: (s, r, l) => `Each message passes the teacher's desk. ${s} stay on the exam under their topic, ${r} are stapled behind their twin, ${l} went to the bin from another topic.`,
+      nowServed: (n, q, t) => `#${n} "${q}": new, it stays under ${t}.`,
+      nowRerouted: (n, q, twin) => `#${n} "${q}": a repeat of #${twin}, stapled behind it.`,
+      nowLost: (n, q, twin, t) => `#${n} "${q}": looks like #${twin} from ${t}, so it goes to the bin.`,
+      waiting: "The messages leave the pile one by one.",
+      done: (s, r, l) => `Done: ${s} messages stay, ${r} repeats are stapled to their twin and ${l} from another topic went to the bin.`,
       tape: { served: "kept", rerouted: "repeat of its topic", lost: "thrown out from another topic" },
       lostOf: (n) => `Messages lost from another topic: ${n}`,
     },
@@ -171,14 +182,21 @@ export const STORY: Record<"en" | "es", FabricaStory> = {
     scene: {
       title: "Lo que pasó con cada mensaje",
       caption: "Mira cómo cada mensaje se queda, se junta con su gemelo o se tira.",
-      statusLabels: { active: "comparando", success: "se queda", danger: "descartó por error" },
       tapeLabel: "Treinta mensajes de clientes, en orden",
-      nodes: {
-        logs: { name: "Mensajes", sub: "30 de clientes", analogy: "las preguntas de los alumnos" },
-        cleaner: { name: "Limpieza", sub: "compara con los que quedan", analogy: "la maestra" },
-        exam: { name: "Se queda", sub: "va al examen", analogy: "el examen" },
-        discarded: { name: "Descartado", sub: "contado como repetido", analogy: "el bote de basura" },
-      },
+      pile: "Preguntas de los alumnos",
+      desk: "La maestra compara",
+      board: "El examen, por tema",
+      bin: "Bote: de otro tema",
+      examNote: "Del examen se toman tres por tema",
+      topics: { saldo: "Saldo", pago: "Pago", disputa: "Disputa", solicitud: "Solicitud", limite: "Límite", fraude: "Fraude" },
+      left: (n) => `quedan ${n}`,
+      tally: (s, r, l) => `${s} se quedan · ${r} repetidas · ${l} tiradas`,
+      ariaLabel: (s, r, l) => `Cada mensaje pasa por el escritorio de la maestra. ${s} se quedan en el examen bajo su tema, ${r} se grapan detrás de su gemela, ${l} fueron al bote siendo de otro tema.`,
+      nowServed: (n, q, t) => `#${n} «${q}»: nueva, se queda en ${t}.`,
+      nowRerouted: (n, q, twin) => `#${n} «${q}»: repetida de #${twin}, se grapa detrás.`,
+      nowLost: (n, q, twin, t) => `#${n} «${q}»: se parece a #${twin} de ${t}, se tira al bote.`,
+      waiting: "Los mensajes salen del montón uno por uno.",
+      done: (s, r, l) => `Listo: ${s} mensajes se quedan, ${r} repetidas quedaron grapadas a su gemela y ${l} de otro tema se fueron al bote.`,
       tape: { served: "se queda", rerouted: "repetida de su tema", lost: "tirado siendo de otro tema" },
       lostOf: (n) => `Mensajes perdidos de otro tema: ${n}`,
     },
