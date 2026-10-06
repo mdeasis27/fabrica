@@ -1,82 +1,79 @@
-# Fabrica
+# Evaluation set builder
 
-**Auto-generated eval sets from production logs** — mine logs, dedupe near-duplicates, cluster
-by intent, and sample into a growing eval set with no manual labeling.
+[Español](README.es.md) · [Try the demo](https://fabrica-manueldeasis27-2515s-projects.vercel.app/en/app) · [Case study](https://manueldeasis.com/en/projects/fabrica) · [Source](https://github.com/mdeasis27/fabrica)
 
-> **Result:** **30 raw logs → 18 eval cases** across **6 intents** with **100% intent
-> coverage** and a **20% dedupe rate** (6 near-duplicates removed). The eval set grows by
-> sampling what production already saw, not by hand-writing labels.
+![Actual interactive local interface](docs/images/cover.png)
 
----
+Paste anonymous logs and adjust similarity and sample settings to inspect grouping and selection.
 
-## Result
+## Two situations to compare
 
-| Metric | Value |
-|---|---|
-| Raw logs | 30 |
-| Near-duplicates removed | 6 (20% dedupe rate) |
-| Unique after dedupe | 24 |
-| Intents covered | 6 / 6 (100%) |
-| Eval set size | 18 (6 intents × 3 samples) |
+**Repeated logs:** Near duplicate refunds Duplicates are removed.
 
-The six duplicates are the "base + one extra word" cases (`"cuál es mi saldo"` vs `"cuál es mi
-saldo hoy"`) caught by token-Jaccard similarity at threshold 0.8. The eval set is the sample
-of 3 per intent from the deduped logs.
+![Repeated logs](docs/images/scenario-a.png)
 
----
+**Broader labels:** Multiple intents Coverage becomes visible.
+
+![Broader labels](docs/images/scenario-b.png)
+
+## Business use case
+
+Raw logs repeat phrasing and leave intent coverage unclear.
+
+**Who uses it:** Evaluation owner.
+
+**The decision:** Use a compact evaluation set.
+
+Choose log evidence, deduplicate it, inspect coverage, and select cases.
+
+### Try the decision
+
+**Repeated logs:** Near duplicate refunds Duplicates are removed.
+
+**Broader labels:** Multiple intents Coverage becomes visible.
+
+Choose a scenario, edit its controls and run the local computation. Step through the visual process or reveal all steps. Reset before comparing the second scenario.
+
+## How to try it
+
+Open `/en/app` (English, default) or `/es/app` (Spanish). Change the scenario inputs and run the computation. Inspect the resulting decision, evidence and computed trace. Playback reveals completed local steps; it does not measure a live model. Reset starts a new local scenario. Changing language resets the scenario; the interface displays a reset notice.
+
+The primary demo needs no account, API key or database. Public links refer to the existing deployment; local redesign changes are pending publication.
+
+## Local setup and verification
+
+Requires Node.js 22 and pnpm 10.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm dev
+pnpm test
+node node_modules/typescript/bin/tsc --noEmit --incremental false
+pnpm lint
+pnpm build
+```
+
+Open `http://localhost:3000/en/app`. Recorded validation covers tests, lint, TypeScript and production builds. See [command results](docs/quality/decision-lab-verification.json) and [browser component checks](docs/quality/decision-lab-browser.json). The new browser checks exercise real React components and production CSS with controlled locale navigation; they do not certify Next routes or public deployment.
 
 ## Architecture
 
-```
-lib/fabrica/                # canonical core (TypeScript, tested)
-  similarity.ts             #   tokenize · jaccard · dedupe (greedy, order-preserving)
-  generate.ts               #   dedupe → cluster by intent → sample
-  benchmark.ts              #   dedupe rate · coverage · eval-set size
-  demo.ts                   #   wires logs into every number
-  data/                     #   logs.json (committed production logs)
-  fixtures/                 #   generator.json (pinned metrics + sampled ids)
-backend/                    # same math in Python + pytest (authoritative)
-  src/fabrica/              #   similarity.py · generate.py · benchmark.py
-  tests/                    #   pinned to tests/fixtures/{logs,generator}.json
-app/                        # Next.js landing + demo dashboard (Vercel, demo mode)
-```
+- `app/[lang]/`: localized browser experience.
+- `lib/experience/`: typed local adapter, validation and run traces.
+- `design-system/`: shared visual tokens, locale controls and execution/replay presentation.
+- `app/api/`: optional server integrations; the primary demo does not require them.
 
-Dedupe is real token-set Jaccard; clustering uses the committed intent label (a documented
-proxy for a real intent classifier). Both languages reproduce the pinned metrics and the exact
-sampled id list.
+Technology: Next.js 16, TypeScript, Python, Vitest, pytest, Tailwind CSS v4.
 
-## Design decisions & tradeoffs
+## Evidence and limitations
 
-1. **Greedy, order-preserving dedupe.** A log is kept only if it is not similar to any
-   *previously kept* log. Deterministic and cheap (O(n²) over a bounded set); the tradeoff is
-   that a duplicate near the head of the list is the "survivor", which is a reasonable bias for
-   a first-seen canonical form.
-2. **Jaccard over tokens, not embeddings.** Embeddings catch paraphrases but need a model; token
-   Jaccard catches the common near-duplicate (repeated query, small edit) deterministically.
-   Production would add an embedding pass for paraphrase-level dedupe.
-3. **Clustering is committed labels.** The demo separates "dedupe" (real math) from "intent"
-   (a committed label standing in for a classifier), so the coverage metric is honest about what
-   is computed vs. what is provided.
+Log lines fan in through deduplication into selected cases.
 
-## What did not work
+Deduplication, clusters and selected cases; empty input does not claim complete coverage.
 
-- **Token Jaccard misses paraphrase duplicates.** `"cómo pago mi factura"` and `"pagar la cuota"`
-   are the same intent with zero token overlap; Jaccard cannot catch that. The demo's threshold
-   deliberately trades recall for no-false-positives on the synthetic set.
-- **Sampling is uniform, not representative.** Real eval-set mining should oversample rare or
-   high-risk intents; the demo samples uniformly to keep the coverage number clean.
+Shows why each selected case represents a distinct intent.
 
-## Run it
+**Limits:** Similarity is local and lexical. These portfolio prototypes do not claim measured production impact.
 
-```bash
-# frontend demo + TS tests
-pnpm install && pnpm dev      # http://localhost:3000
-pnpm test                     # 7 vitest tests
+Inputs use fictional or anonymized examples. Optional live integrations require their own credentials and operational setup. Secrets belong in the configured secret manager, never in local secret files or Git. Use the existing `infisical run -- <command>` workflow when live integration is needed. This repository does not publish or deploy automatically as part of the local demo.
 
-# backend (authoritative math) — Python 3.12+
-cd backend && uv sync --extra dev && uv run pytest   # 3 tests, pinned fixtures
-```
-
-## Stack
-
-Next.js 16 · TypeScript · Vitest · Tailwind v4 · Python 3.13 · pytest
+![Actual English demo capture](docs/images/demo.png)

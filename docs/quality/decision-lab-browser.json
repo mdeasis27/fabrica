@@ -1,0 +1,53 @@
+{
+  "repository": "fabrica",
+  "scope": "Real React component with controlled locale; Next routes not tested.",
+  "checks": [
+    {
+      "locale": "en",
+      "scenarios": [
+        {
+          "preset": "Repeated logs\nDeduplication removes similar logs",
+          "outcome": "Review selected cases\n\n2 cases represent 2 of 2 intents."
+        },
+        {
+          "preset": "Diverse intents\nCoverage spans more labels",
+          "outcome": "Review selected cases\n\n3 cases represent 3 of 3 intents."
+        }
+      ],
+      "localizedValidationError": "Provide a 0–1 threshold and positive whole sample size.",
+      "mobileNoOverflow": true,
+      "reducedMotion": true,
+      "keyboard": true,
+      "noRequests": true,
+      "sceneChangesWithScenario": true,
+      "editingClearsPresetAndTrace": true,
+      "resetRestoresFirstPreset": true,
+      "cancelControlPresent": true,
+      "presetRestoresAllInputs": true
+    },
+    {
+      "locale": "es",
+      "scenarios": [
+        {
+          "preset": "Registros repetidos\nLa deduplicación elimina registros similares",
+          "outcome": "Revisa casos seleccionados\n\n2 casos representan 2 de 2 intenciones."
+        },
+        {
+          "preset": "Intenciones diversas\nLa cobertura abarca más etiquetas",
+          "outcome": "Revisa casos seleccionados\n\n3 casos representan 3 de 3 intenciones."
+        }
+      ],
+      "localizedValidationError": "Usa un umbral de 0 a 1 y un tamaño de muestra entero positivo.",
+      "mobileNoOverflow": true,
+      "reducedMotion": true,
+      "keyboard": true,
+      "noRequests": true,
+      "sceneChangesWithScenario": true,
+      "editingClearsPresetAndTrace": true,
+      "resetRestoresFirstPreset": true,
+      "cancelControlPresent": true,
+      "presetRestoresAllInputs": true
+    }
+  ],
+  "errors": []
+}
